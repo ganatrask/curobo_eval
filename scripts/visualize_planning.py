@@ -245,41 +245,49 @@ mat_blue = make_mat("/World/mat_blue", Gf.Vec3f(0.2, 0.4, 1.0))
 # Helpers
 # ---------------------------------------------------------------------------
 omni.timeline.get_timeline_interface().play()
-simulation_app.update()
-simulation_app.update()
 
-try:
-    dof_names = robot.get_dof_names()
-except Exception:
-    dof_names = None
+# Give Articulation time to initialize before querying DOF names
+for _ in range(60):
+    simulation_app.update()
 
+# Discover joint prims by looking for known joint names in the USD stage
 ARM_JOINTS = ["joint_0", "joint_1", "joint_2", "joint_3", "joint_4", "joint_5"]
+joint_prim_map = {}  # joint_name -> USD prim path
+all_joint_names = ARM_JOINTS + ["left_carriage_joint", "right_carriage_joint"]
+for jname in all_joint_names:
+    for candidate in [f"{ROBOT_PATH}/joints/{jname}", f"{ROBOT_PATH}/{jname}",
+                      f"{ROBOT_PATH}/root_joint/{jname}"]:
+        p = stage.GetPrimAtPath(candidate)
+        if p.IsValid():
+            joint_prim_map[jname] = candidate
+            break
+
+print(f"  Found {len(joint_prim_map)} joints: {list(joint_prim_map.keys())}")
 
 
-def build_full_positions(joint_values):
-    """Map 6-DOF arm joints to full DOF array."""
-    positions = np.zeros(len(dof_names))
-    for idx, name in enumerate(dof_names):
-        if name in ARM_JOINTS:
-            j = ARM_JOINTS.index(name)
-            if j < len(joint_values):
-                positions[idx] = joint_values[j]
-        elif name in ("left_carriage_joint", "right_carriage_joint"):
-            positions[idx] = 0.022
-    return positions
+def set_joints(joint_values):
+    """Set arm joints via USD drive target attributes (works in all Isaac Sim versions)."""
+    joint_map = {}
+    for i, name in enumerate(ARM_JOINTS):
+        if i < len(joint_values):
+            joint_map[name] = float(joint_values[i])
+    joint_map["left_carriage_joint"] = 0.022
+    joint_map["right_carriage_joint"] = 0.022
 
-
-def set_joints(joint_values, use_targets=False):
-    if dof_names is None:
-        return
-    positions = build_full_positions(joint_values)
-    if use_targets:
-        # Use position targets — works during physics simulation
-        robot.set_joint_position_targets(positions.reshape(1, -1))
-    else:
-        # Direct set — use when snapping to a pose (e.g., start config)
-        robot.set_joint_positions(positions.reshape(1, -1))
-        robot.set_joint_position_targets(positions.reshape(1, -1))
+    for jname, value in joint_map.items():
+        if jname not in joint_prim_map:
+            continue
+        prim = stage.GetPrimAtPath(joint_prim_map[jname])
+        if not prim.IsValid():
+            continue
+        # USD angular values are in degrees
+        deg_value = float(np.degrees(value))
+        # Set drive target (tells the joint controller where to go)
+        for attr_name in ["drive:angular:physics:targetPosition",
+                          "state:angular:physics:position"]:
+            attr = prim.GetAttribute(attr_name)
+            if attr and attr.IsValid():
+                attr.Set(deg_value)
 
 
 def set_marker(pos, mat):
@@ -290,11 +298,7 @@ def set_marker(pos, mat):
 
 
 def animate(waypoints, speed=1.0):
-    """Animate by setting joint positions while timeline is playing.
-
-    Uses the same pattern as verify_spatula_orientation.py (which works):
-    set_joint_positions → multiple update() calls to let physics apply it.
-    """
+    """Animate by setting joint positions via USD and rendering each frame."""
     # Subsample for reasonable animation length
     if len(waypoints) > 100:
         step = max(1, len(waypoints) // 100)
@@ -303,12 +307,10 @@ def animate(waypoints, speed=1.0):
     for wp in waypoints:
         if not simulation_app.is_running():
             break
-        positions = build_full_positions(wp)
-        robot.set_joint_positions(positions.reshape(1, -1))
-        # Multiple updates so physics applies the position before next waypoint
-        for _ in range(5):
+        set_joints(wp)
+        for _ in range(3):
             simulation_app.update()
-        time.sleep(0.02 / speed)
+        time.sleep(0.03 / speed)
 
 
 # ---------------------------------------------------------------------------
@@ -329,9 +331,8 @@ for i, problem in enumerate(problems):
     if not simulation_app.is_running():
         break
 
-    # Snap to start config — same pattern as verify_spatula_orientation.py
-    positions = build_full_positions(problem["start_config"])
-    robot.set_joint_positions(positions.reshape(1, -1))
+    # Snap to start config
+    set_joints(problem["start_config"])
     set_marker(problem["goal_position"], mat_blue)
 
     # Let robot settle at start position
