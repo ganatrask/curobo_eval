@@ -1,0 +1,88 @@
+##
+## Collision spheres for WidowX AI robot with spatula
+## Used by cuRoBO for collision checking
+##
+## Sphere centers are in link-local coordinates
+## Radii are in meters
+##
+
+collision_spheres:
+  # Smaller spheres to avoid false collisions during planning
+  # These are approximations - use Isaac Sim's Lula tools for precise fitting
+
+  base_link:
+    - "center": [0.0, 0.0, 0.03]
+      "radius": 0.04
+    - "center": [0.0, 0.0, 0.05]
+      "radius": 0.035
+
+  link_1:
+    - "center": [0.0, 0.0, 0.02]
+      "radius": 0.03
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.03
+
+  link_2:
+    - "center": [-0.06, 0.0, 0.0]
+      "radius": 0.03
+    - "center": [-0.12, 0.0, 0.0]
+      "radius": 0.028
+    - "center": [-0.18, 0.0, 0.0]
+      "radius": 0.028
+    - "center": [-0.24, 0.0, 0.0]
+      "radius": 0.028
+
+  link_3:
+    - "center": [0.06, 0.0, 0.02]
+      "radius": 0.028
+    - "center": [0.12, 0.0, 0.03]
+      "radius": 0.028
+    - "center": [0.18, 0.0, 0.045]
+      "radius": 0.028
+    - "center": [0.24, 0.0, 0.058]
+      "radius": 0.028
+
+  link_4:
+    - "center": [0.03, 0.0, 0.03]
+      "radius": 0.028
+    - "center": [0.06, 0.0, 0.045]
+      "radius": 0.025
+
+  link_5:
+    - "center": [0.0, 0.0, -0.02]
+      "radius": 0.028
+    - "center": [0.0, 0.0, -0.04]
+      "radius": 0.025
+
+  link_6:
+    - "center": [0.03, 0.0, 0.0]
+      "radius": 0.025
+    - "center": [0.06, 0.0, 0.0]
+      "radius": 0.022
+    - "center": [0.08, 0.0, 0.0]
+      "radius": 0.020
+
+  # End effector / gripper (minimal sphere)
+  ee_gripper_link:
+    - "center": [0.0, 0.0, 0.0]
+      "radius": 0.008
+
+  # Spatula - kept small for planning, actual collision uses SDF in sim
+  spatula_link:
+    # Handle section
+    - "center": [0.08, 0.0, 0.01]
+      "radius": 0.012
+    - "center": [0.16, 0.0, 0.015]
+      "radius": 0.012
+    - "center": [0.24, 0.0, 0.020]
+      "radius": 0.012
+    # Blade section (tip area)
+    - "center": [0.30, 0.0, 0.025]
+      "radius": 0.015
+    - "center": [0.34, 0.0, 0.028]
+      "radius": 0.015
+
+  # Spatula tip frame (virtual, tiny sphere)
+  spatula_tip:
+    - "center": [0.0, 0.0, 0.0]
+      "radius": 0.003

@@ -1,0 +1,168 @@
+# =============================================================================
+# cuRobo Evaluation Configuration
+# =============================================================================
+# Edit this file to match YOUR robot and task setup.
+# All scripts read from this config.
+
+# ---------------------------------------------------------------------------
+# Robot Configuration
+# ---------------------------------------------------------------------------
+robot:
+  # Path to your cuRobo robot YAML (contains URDF path, spheres, joint config)
+  # Can be a filename in cuRobo's robot_configs dir (e.g. "ur5e.yml")
+  # or an absolute path to your custom file (e.g. "/home/user/my_robot.yml")
+  config_file: "/home/shyam/projects/cc/curobo_eval/robots/curobo_configs_1/wxai_spatula_curobo.yml"
+
+  # Joint names in YOUR robot's URDF (order must match the URDF)
+  # These are used to create JointState objects
+  joint_names:
+    - "joint_0"
+    - "joint_1"
+    - "joint_2"
+    - "joint_3"
+    - "joint_4"
+    - "joint_5"
+
+  # A known safe "home" configuration (radians)
+  # The robot starts here and returns here between tests
+  retract_config: [0.0, 0.5, 0.5, 0.0, 0.0, 0.0]
+
+  # End-effector link name (must match your robot YAML ee_link)
+  ee_link: "spatula_tip"
+
+  # USD path for Isaac Sim visualization (optional, for Phase 0)
+  # Leave empty to use cuRobo's built-in robot loading
+  usd_path: "robots/assets/wxai/wxai_follower_spatula.usd"
+
+# ---------------------------------------------------------------------------
+# Spatula / Tool Configuration
+# ---------------------------------------------------------------------------
+# If your spatula is already in the URDF and robot YAML as an extra_link,
+# set has_spatula: true. The orientation constraint will keep ee_link flat.
+tool:
+  has_spatula: true
+
+  # The "flat" orientation of the spatula in world frame
+  # This is the quaternion [qw, qx, qy, qz] where the spatula is level
+  # For most setups: pointing down = [0, 1, 0, 0] or [0, 0, 1, 0]
+  # You need to figure this out for YOUR gripper frame
+  flat_orientation_wxyz: [1.0, 0.0, 0.0, 0.0]
+
+  # Maximum acceptable orientation deviation (degrees)
+  # If spatula tilts more than this, the trajectory fails your quality check
+  max_orientation_deviation_deg: 5.0
+
+# ---------------------------------------------------------------------------
+# Task Workspace Definition
+# ---------------------------------------------------------------------------
+# This defines WHERE your robot operates — the 3D bounding box for sampling
+# goal poses. Set this to match your real-world task area.
+workspace:
+  # Bounding box for goal positions [min, max] in meters
+  # Relative to robot base frame
+  x_range: [0.1, 0.45]   # Forward from robot base (wxai reach ~0.5m total)
+  y_range: [-0.3, 0.3]   # Left-right
+  z_range: [0.02, 0.35]  # Height (above table surface)
+
+  # Goal orientations to test
+  # "fixed": All goals use flat_orientation_wxyz (spatula level)
+  # "random": Random orientations (for unconstrained tests)
+  # "varied": Mix of flat + small perturbations (realistic)
+  orientation_mode: "fixed"
+
+  # IK reachability scan resolution (meters)
+  # Smaller = more accurate workspace map, but slower Phase 0
+  reachability_resolution: 0.05
+
+# ---------------------------------------------------------------------------
+# Planning Parameters
+# ---------------------------------------------------------------------------
+planning:
+  # Number of test problems per phase
+  num_problems: 1000
+
+  # cuRobo MotionGen parameters
+  num_trajopt_seeds: 12       # Parallel optimization seeds
+  num_graph_seeds: 12         # Geometric planner seeds
+  interpolation_dt: 0.02      # Trajectory interpolation timestep (s)
+  max_attempts: 10            # Retries with resampled seeds
+  enable_graph: true          # Enable PRM* geometric planner
+
+  # Time-optimal trajectory scaling
+  # Lower = slower, smoother motion (good for food)
+  # Range: 0.5 (very conservative) to 1.0 (full speed)
+  time_dilation_factor: 0.7
+
+  # Collision safety margins
+  collision_activation_distance: 0.025  # meters
+  collision_sphere_buffer: 0.01         # extra padding on spheres
+
+  # Kinematic limits (override URDF if needed for food safety)
+  max_jerk: 200.0            # rad/s^3 (default 500, reduced for food)
+  max_acceleration: 8.0      # rad/s^2 (default 15, reduced for food)
+
+# ---------------------------------------------------------------------------
+# Obstacle Layouts (Phase 3)
+# ---------------------------------------------------------------------------
+# Define multiple layouts to test different difficulty levels.
+# Each layout is a named scene with cuboid and/or mesh obstacles.
+# Poses: [x, y, z, qw, qx, qy, qz], dims: [length, width, height]
+obstacle_layouts:
+
+  easy:
+    description: "Simple table + 1 side wall, mostly clear workspace"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.025, 1, 0, 0, 0]
+      wall_left:
+        dims: [0.05, 0.6, 0.4]
+        pose: [-0.1, 0.5, 0.2, 1, 0, 0, 0]
+
+  medium:
+    description: "Table + overhead shelf + 2 side obstacles"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.025, 1, 0, 0, 0]
+      shelf:
+        dims: [0.8, 0.6, 0.03]
+        pose: [0.45, 0.0, 0.55, 1, 0, 0, 0]
+      wall_left:
+        dims: [0.05, 0.6, 0.5]
+        pose: [-0.1, 0.45, 0.25, 1, 0, 0, 0]
+      wall_right:
+        dims: [0.05, 0.6, 0.5]
+        pose: [-0.1, -0.45, 0.25, 1, 0, 0, 0]
+
+  hard:
+    description: "Dense clutter — table + shelf + narrow passage + boxes"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.025, 1, 0, 0, 0]
+      shelf:
+        dims: [0.8, 0.6, 0.03]
+        pose: [0.45, 0.0, 0.45, 1, 0, 0, 0]
+      wall_left:
+        dims: [0.05, 0.5, 0.5]
+        pose: [0.0, 0.35, 0.25, 1, 0, 0, 0]
+      wall_right:
+        dims: [0.05, 0.5, 0.5]
+        pose: [0.0, -0.35, 0.25, 1, 0, 0, 0]
+      box_center:
+        dims: [0.15, 0.15, 0.2]
+        pose: [0.4, 0.0, 0.1, 1, 0, 0, 0]
+      box_left:
+        dims: [0.1, 0.1, 0.15]
+        pose: [0.5, 0.2, 0.075, 1, 0, 0, 0]
+
+# ---------------------------------------------------------------------------
+# Output / Logging
+# ---------------------------------------------------------------------------
+output:
+  results_dir: "results"
+  # Save full trajectory data (large files) or just metrics
+  save_trajectories: false
+  # Save per-problem details or just aggregate stats
+  save_per_problem: true
