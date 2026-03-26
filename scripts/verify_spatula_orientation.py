@@ -15,14 +15,17 @@ What to look for:
 import os
 import sys
 import numpy as np
-from isaacsim import SimulationApp
+
+try:
+    from isaacsim import SimulationApp
+except ImportError:
+    from omni.isaac.kit import SimulationApp
 
 simulation_app = SimulationApp({"headless": False, "width": 1920, "height": 1080})
 
 import omni.timeline
 import isaacsim.core.experimental.utils.stage as stage_utils
 from isaacsim.core.experimental.prims import Articulation
-from isaacsim.core.simulation_manager import SimulationManager
 from isaacsim.storage.native import get_assets_root_path
 
 # ---------------------------------------------------------------------------

@@ -28,7 +28,7 @@ import yaml
 from curobo.types.base import TensorDeviceType
 from curobo.types.robot import RobotConfig
 from curobo.cuda_robot_model.cuda_robot_model import CudaRobotModel
-from curobo.util_file import get_robot_configs_path, join_path, load_yaml
+from eval_utils import load_robot_config
 
 tensor_args = TensorDeviceType()
 
@@ -36,7 +36,10 @@ with open(os.path.join(project_dir, "config/eval_config.yaml"), "r") as f:
     cfg = yaml.safe_load(f)
 
 robot_file = cfg["robot"]["config_file"]
-robot_cfg_dict = load_yaml(robot_file)
+if not os.path.isabs(robot_file):
+    robot_file = os.path.join(project_dir, robot_file)
+robot_cfg_dict = load_robot_config(robot_file)
+
 robot_cfg = RobotConfig.from_dict(robot_cfg_dict["robot_cfg"])
 kin_model = CudaRobotModel(robot_cfg.kinematics)
 

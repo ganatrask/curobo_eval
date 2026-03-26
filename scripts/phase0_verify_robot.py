@@ -12,7 +12,20 @@ Usage:
     omni_python scripts/phase0_verify_robot.py --robot /path/to/my_robot.yml
 """
 
-# Handle Isaac Sim import
+import argparse
+import os
+import sys
+
+# Parse args BEFORE `import isaacsim` — that bootstrap module strips flags
+# like --headless from sys.argv, so argparse would never see them.
+parser = argparse.ArgumentParser(description="Phase 0: Robot Verification")
+parser.add_argument("--config", type=str, default="config/eval_config.yaml")
+parser.add_argument("--robot", type=str, default=None, help="Override robot config file")
+parser.add_argument("--headless", action="store_true", help="Skip GUI visualization")
+parser.add_argument("--skip_workspace", action="store_true", help="Skip workspace scan")
+args = parser.parse_args()
+
+# Now safe to bootstrap Isaac Sim
 try:
     import isaacsim
 except ImportError:
@@ -20,18 +33,7 @@ except ImportError:
 
 import torch
 import numpy as np
-import argparse
-import os
-import sys
 import yaml
-
-# Parse args before Isaac Sim launch
-parser = argparse.ArgumentParser(description="Phase 0: Robot Verification")
-parser.add_argument("--config", type=str, default="config/eval_config.yaml")
-parser.add_argument("--robot", type=str, default=None, help="Override robot config file")
-parser.add_argument("--headless", action="store_true", help="Skip GUI visualization")
-parser.add_argument("--skip_workspace", action="store_true", help="Skip workspace scan")
-args = parser.parse_args()
 
 # Load eval config
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -46,6 +48,8 @@ with open(config_path, "r") as f:
     cfg = yaml.safe_load(f)
 
 robot_file = args.robot or cfg["robot"]["config_file"]
+if not os.path.isabs(robot_file):
+    robot_file = os.path.join(project_dir, robot_file)
 
 # ---------------------------------------------------------------------------
 # Launch Isaac Sim (must happen before other Isaac/cuRobo imports)
@@ -53,8 +57,8 @@ robot_file = args.robot or cfg["robot"]["config_file"]
 from omni.isaac.kit import SimulationApp
 simulation_app = SimulationApp({
     "headless": args.headless,
-    "width": "1920",
-    "height": "1080",
+    "width": 1920,
+    "height": 1080,
 })
 
 # Now safe to import cuRobo
@@ -66,31 +70,26 @@ from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
 from curobo.util_file import get_robot_configs_path, join_path, load_yaml
 from curobo.util.usd_helper import UsdHelper
 
-# Load local utils directly by file path — bypasses Isaac Sim's sys.path pollution
-import importlib.util as _ilu
-_pg_spec = _ilu.spec_from_file_location(
-    "problem_generator",
-    os.path.join(script_dir, "utils", "problem_generator.py"),
-)
-_pg_mod = _ilu.module_from_spec(_pg_spec)
-_pg_spec.loader.exec_module(_pg_mod)
-ProblemGenerator = _pg_mod.ProblemGenerator
+from eval_utils import load_robot_config
+from eval_utils.problem_generator import ProblemGenerator
 
 tensor_args = TensorDeviceType()
 
 
-def load_robot_config(robot_file: str) -> dict:
-    """Load robot config dict from file path or cuRobo's built-in configs."""
-    if os.path.isabs(robot_file):
-        return load_yaml(robot_file)
-    else:
-        return load_yaml(join_path(get_robot_configs_path(), robot_file))
+
+def _retract_tensor(cfg: dict) -> torch.Tensor:
+    """Build a (1, n_joints) retract config tensor from eval config."""
+    retract = cfg["robot"].get("retract_config")
+    if retract:
+        return torch.tensor([retract], dtype=torch.float32, device="cuda:0")
+    return torch.zeros(1, len(cfg["robot"]["joint_names"]),
+                       dtype=torch.float32, device="cuda:0")
 
 
 # =====================================================================
 # TEST 1: Load robot and verify basic FK
 # =====================================================================
-def test_fk(robot_cfg_dict: dict):
+def test_fk(robot_cfg_dict: dict, cfg: dict, robot_file: str):
     """Verify forward kinematics works correctly."""
     print("\n" + "="*60)
     print("  TEST 1: Forward Kinematics Verification")
@@ -99,14 +98,7 @@ def test_fk(robot_cfg_dict: dict):
     robot_cfg = RobotConfig.from_dict(robot_cfg_dict["robot_cfg"])
     kin_model = CudaRobotModel(robot_cfg.kinematics)
 
-    # Test at retract config
-    retract = cfg["robot"].get("retract_config")
-    if retract:
-        q = torch.tensor([retract], dtype=torch.float32, device="cuda:0")
-    else:
-        # Use cuRobo's built-in retract
-        q = torch.zeros(1, len(cfg["robot"]["joint_names"]),
-                        dtype=torch.float32, device="cuda:0")
+    q = _retract_tensor(cfg)
 
     state = kin_model.get_state(q)
     ee_pos = state.ee_position.cpu().numpy()[0]
@@ -135,18 +127,14 @@ def test_fk(robot_cfg_dict: dict):
 # =====================================================================
 # TEST 2: Verify collision spheres
 # =====================================================================
-def test_spheres(robot_cfg_dict: dict, kin_model: CudaRobotModel):
+def test_spheres(robot_cfg_dict: dict, kin_model: CudaRobotModel, cfg: dict,
+                 headless: bool):
     """Check collision sphere coverage."""
     print("\n" + "="*60)
     print("  TEST 2: Collision Sphere Verification")
     print("="*60)
 
-    retract = cfg["robot"].get("retract_config")
-    if retract:
-        q = torch.tensor([retract], dtype=torch.float32, device="cuda:0")
-    else:
-        q = torch.zeros(1, len(cfg["robot"]["joint_names"]),
-                        dtype=torch.float32, device="cuda:0")
+    q = _retract_tensor(cfg)
 
     # Get spheres at retract config
     # Returns list[list[Sphere]] — each Sphere has .name, .position, .radius
@@ -172,7 +160,6 @@ def test_spheres(robot_cfg_dict: dict, kin_model: CudaRobotModel):
     # Check for spatula coverage
     tool_cfg = cfg.get("tool", {})
     if tool_cfg.get("has_spatula"):
-        ee_link = robot_cfg_dict["robot_cfg"]["kinematics"]["ee_link"]
         extra_links = robot_cfg_dict["robot_cfg"]["kinematics"].get("extra_links", {})
         if extra_links:
             print(f"  Spatula extra_links found: {list(extra_links.keys())}")
@@ -180,7 +167,7 @@ def test_spheres(robot_cfg_dict: dict, kin_model: CudaRobotModel):
             print("  WARNING: has_spatula=true but no extra_links in robot config")
             print("  Make sure spatula is either in the URDF or added via extra_links")
 
-    if not args.headless:
+    if not headless:
         print("\n  ==> VISUAL CHECK: Isaac Sim window is open.")
         print("  ==> Look at the robot and verify spheres cover all links,")
         print("  ==> especially the spatula/gripper area.")
@@ -267,7 +254,7 @@ def test_ik_roundtrip(robot_cfg_dict: dict, kin_model: CudaRobotModel):
 # =====================================================================
 # TEST 4: Workspace Discovery
 # =====================================================================
-def test_workspace():
+def test_workspace(cfg: dict, robot_file: str):
     """Discover and save the reachable workspace."""
     print("\n" + "="*60)
     print("  TEST 4: Workspace Reachability Scan")
@@ -324,20 +311,23 @@ def main():
     print("  cuRobo Evaluation — Phase 0: Robot Verification")
     print("#"*60)
 
+    # Ensure results directory exists before any test tries to write there
+    os.makedirs(os.path.join(project_dir, "results"), exist_ok=True)
+
     robot_cfg_dict = load_robot_config(robot_file)
 
     # Test 1: FK
-    kin_model = test_fk(robot_cfg_dict)
+    kin_model = test_fk(robot_cfg_dict, cfg, robot_file)
 
     # Test 2: Spheres
-    test_spheres(robot_cfg_dict, kin_model)
+    test_spheres(robot_cfg_dict, kin_model, cfg, headless=args.headless)
 
     # Test 3: IK round-trip
     test_ik_roundtrip(robot_cfg_dict, kin_model)
 
     # Test 4: Workspace (skip if requested)
     if not args.skip_workspace:
-        test_workspace()
+        test_workspace(cfg, robot_file)
     else:
         print("\n  Skipping workspace scan (--skip_workspace)")
 

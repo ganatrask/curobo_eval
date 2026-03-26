@@ -62,27 +62,55 @@ collision_spheres:
     - "center": [0.08, 0.0, 0.0]
       "radius": 0.020
 
-  # End effector / gripper (minimal sphere)
+  # End effector / gripper
   ee_gripper_link:
     - "center": [0.0, 0.0, 0.0]
-      "radius": 0.008
+      "radius": 0.018
 
-  # Spatula - kept small for planning, actual collision uses SDF in sim
+  # Spatula — mesh-fitted spheres from fit_spatula_spheres.py
+  # Mesh bounds: X=[0.01, 0.34]m, Y=[-0.041, 0.040]m, Z=[-0.039, 0.038]m
+  # spatula_link origin is at ee_gripper_link offset -0.07m in X
   spatula_link:
-    # Handle section
-    - "center": [0.08, 0.0, 0.01]
-      "radius": 0.012
-    - "center": [0.16, 0.0, 0.015]
-      "radius": 0.012
-    - "center": [0.24, 0.0, 0.020]
-      "radius": 0.012
-    # Blade section (tip area)
-    - "center": [0.30, 0.0, 0.025]
-      "radius": 0.015
-    - "center": [0.34, 0.0, 0.028]
-      "radius": 0.015
+    # Holder / gripper mount (x=0.01–0.08, wide bracket)
+    - "center": [0.015, 0.0, 0.004]
+      "radius": 0.045
+    - "center": [0.058, 0.0, 0.001]
+      "radius": 0.035
+    # Handle transition (x=0.08–0.10, narrows)
+    - "center": [0.10, 0.0, 0.001]
+      "radius": 0.025
+    # Handle (x=0.12–0.19, thin rod ~13mm wide)
+    - "center": [0.135, 0.0, 0.001]
+      "radius": 0.013
+    - "center": [0.17, 0.0, 0.002]
+      "radius": 0.010
+    - "center": [0.19, 0.0, 0.002]
+      "radius": 0.010
+    # Neck / widening to head (x=0.21–0.25)
+    - "center": [0.21, 0.0, 0.0]
+      "radius": 0.020
+    - "center": [0.235, 0.0, 0.0]
+      "radius": 0.032
+    # Spoon head center line (x=0.25–0.34, up to 81mm wide)
+    - "center": [0.265, 0.0, 0.003]
+      "radius": 0.043
+    - "center": [0.295, 0.0, 0.009]
+      "radius": 0.044
+    - "center": [0.32, 0.0, 0.016]
+      "radius": 0.044
+    - "center": [0.339, 0.0, 0.022]
+      "radius": 0.042
+    # Spoon head side spheres (cover the Y-width at widest points)
+    - "center": [0.275, 0.020, 0.004]
+      "radius": 0.023
+    - "center": [0.275, -0.020, 0.004]
+      "radius": 0.023
+    - "center": [0.32, 0.020, 0.016]
+      "radius": 0.023
+    - "center": [0.32, -0.020, 0.016]
+      "radius": 0.023
 
-  # Spatula tip frame (virtual, tiny sphere)
+  # Spatula tip frame (virtual, small sphere)
   spatula_tip:
     - "center": [0.0, 0.0, 0.0]
-      "radius": 0.003
+      "radius": 0.005

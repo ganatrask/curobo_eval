@@ -1,1 +1,0 @@
-# cuRobo Evaluation Utilities

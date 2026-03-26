@@ -11,7 +11,8 @@ robot:
   # Path to your cuRobo robot YAML (contains URDF path, spheres, joint config)
   # Can be a filename in cuRobo's robot_configs dir (e.g. "ur5e.yml")
   # or an absolute path to your custom file (e.g. "/home/user/my_robot.yml")
-  config_file: "/home/shyam/projects/cc/curobo_eval/robots/curobo_configs_1/wxai_spatula_curobo.yml"
+  # Relative to project root (resolved by scripts at load time) or absolute path
+  config_file: "robots/curobo_configs_1/wxai_spatula_curobo.yml"
 
   # Joint names in YOUR robot's URDF (order must match the URDF)
   # These are used to create JointState objects
