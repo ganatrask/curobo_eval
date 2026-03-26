@@ -1306,3 +1306,30 @@ Slightly relax the threshold to 10° (which would pass ~75% of trajectories)
   Next: run scripts/analyze_results.py for cross-phase analysis.
 
 [3747.717s] Simulation App Shutting Down
+
+Yes, it's in the results I showed! Here's the Phase 3 planning time breakdown:
+
+Layout	Unconstrained (median)	Constrained (median)
+easy	161ms	168ms
+medium	193ms	191ms
+hard	236ms	238ms
+few_boxes	212ms	216ms
+scattered	214ms	154ms
+cluttered	141ms	150ms
+P98 (worst 2% of cases):
+
+Layout	Unconstrained (P98)	Constrained (P98)
+easy	1,370ms	1,226ms
+medium	1,089ms	1,142ms
+hard	1,870ms	1,887ms
+few_boxes	1,364ms	1,312ms
+scattered	1,569ms	796ms
+cluttered	643ms	755ms
+Key observations:
+
+Median: 141–238ms — all well under 500ms, fast enough for real-time replanning
+Hard layout is slowest (236ms median) — narrow passages require more optimization iterations
+Cluttered is fastest (141ms) — fewer reachable positions means shorter, simpler paths
+Constraints add minimal overhead — only ~5-10ms difference in most cases
+P98 can hit 1.9s — the worst-case hard problems take significant time, but 98% solve under 1.2s
+

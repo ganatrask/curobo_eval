@@ -115,7 +115,7 @@ obstacle_layouts:
     cuboid:
       table:
         dims: [1.2, 0.8, 0.05]
-        pose: [0.45, 0.0, -0.025, 1, 0, 0, 0]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
       wall_left:
         dims: [0.05, 0.6, 0.4]
         pose: [-0.1, 0.5, 0.2, 1, 0, 0, 0]
@@ -125,7 +125,7 @@ obstacle_layouts:
     cuboid:
       table:
         dims: [1.2, 0.8, 0.05]
-        pose: [0.45, 0.0, -0.025, 1, 0, 0, 0]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
       shelf:
         dims: [0.8, 0.6, 0.03]
         pose: [0.45, 0.0, 0.55, 1, 0, 0, 0]
@@ -141,7 +141,7 @@ obstacle_layouts:
     cuboid:
       table:
         dims: [1.2, 0.8, 0.05]
-        pose: [0.45, 0.0, -0.025, 1, 0, 0, 0]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
       shelf:
         dims: [0.8, 0.6, 0.03]
         pose: [0.45, 0.0, 0.45, 1, 0, 0, 0]
@@ -157,6 +157,87 @@ obstacle_layouts:
       box_left:
         dims: [0.1, 0.1, 0.15]
         pose: [0.5, 0.2, 0.075, 1, 0, 0, 0]
+
+  # ---- Realistic food-transfer scenarios ----
+  # Small objects scattered IN the workspace that force path deviation
+
+  few_boxes:
+    description: "3 small boxes on the table — robot must navigate around them"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      bowl_left:
+        dims: [0.10, 0.10, 0.08]
+        pose: [0.30, 0.15, 0.04, 1, 0, 0, 0]
+      cup_center:
+        dims: [0.07, 0.07, 0.12]
+        pose: [0.35, 0.0, 0.06, 1, 0, 0, 0]
+      container_right:
+        dims: [0.12, 0.08, 0.10]
+        pose: [0.30, -0.15, 0.05, 1, 0, 0, 0]
+
+  scattered:
+    description: "6 small objects spread across workspace — moderate clutter"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      box_1:
+        dims: [0.08, 0.08, 0.10]
+        pose: [0.30, 0.10, 0.05, 1, 0, 0, 0]
+      box_2:
+        dims: [0.10, 0.06, 0.12]
+        pose: [0.35, -0.10, 0.06, 1, 0, 0, 0]
+      box_3:
+        dims: [0.07, 0.07, 0.15]
+        pose: [0.40, 0.05, 0.075, 1, 0, 0, 0]
+      box_4:
+        dims: [0.06, 0.10, 0.08]
+        pose: [0.28, -0.20, 0.04, 1, 0, 0, 0]
+      box_5:
+        dims: [0.09, 0.09, 0.10]
+        pose: [0.38, 0.20, 0.05, 1, 0, 0, 0]
+      box_6:
+        dims: [0.08, 0.08, 0.14]
+        pose: [0.32, 0.0, 0.07, 1, 0, 0, 0]
+
+  cluttered:
+    description: "10 objects densely packed — maximum obstacle avoidance challenge"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      obj_1:
+        dims: [0.08, 0.08, 0.10]
+        pose: [0.28, 0.05, 0.05, 1, 0, 0, 0]
+      obj_2:
+        dims: [0.07, 0.10, 0.12]
+        pose: [0.32, -0.08, 0.06, 1, 0, 0, 0]
+      obj_3:
+        dims: [0.10, 0.07, 0.08]
+        pose: [0.36, 0.12, 0.04, 1, 0, 0, 0]
+      obj_4:
+        dims: [0.06, 0.06, 0.15]
+        pose: [0.30, -0.18, 0.075, 1, 0, 0, 0]
+      obj_5:
+        dims: [0.09, 0.09, 0.11]
+        pose: [0.40, 0.0, 0.055, 1, 0, 0, 0]
+      obj_6:
+        dims: [0.07, 0.07, 0.09]
+        pose: [0.35, 0.20, 0.045, 1, 0, 0, 0]
+      obj_7:
+        dims: [0.08, 0.06, 0.13]
+        pose: [0.38, -0.15, 0.065, 1, 0, 0, 0]
+      obj_8:
+        dims: [0.10, 0.10, 0.07]
+        pose: [0.28, 0.22, 0.035, 1, 0, 0, 0]
+      obj_9:
+        dims: [0.06, 0.08, 0.10]
+        pose: [0.42, -0.08, 0.05, 1, 0, 0, 0]
+      obj_10:
+        dims: [0.08, 0.08, 0.16]
+        pose: [0.34, 0.08, 0.08, 1, 0, 0, 0]
 
 # ---------------------------------------------------------------------------
 # Output / Logging
