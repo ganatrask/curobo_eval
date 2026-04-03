@@ -37,6 +37,9 @@ class PlanningMetrics:
     any_collision_detected: bool = False
     min_obstacle_clearance_mm: float = 0.0
 
+    # Problem validity (Phase 3: start config may collide with obstacles)
+    skipped_invalid_start: bool = False
+
     def to_dict(self) -> Dict:
         return asdict(self)
 
@@ -123,16 +126,34 @@ def aggregate_metrics(all_metrics: List[PlanningMetrics]) -> Dict:
     Reports mean, median, p75, p98 for all numeric fields.
     """
     n_total = len(all_metrics)
+    n_skipped = sum(1 for m in all_metrics if m.skipped_invalid_start)
+    n_valid = n_total - n_skipped
     n_success = sum(1 for m in all_metrics if m.success)
-    n_fail = n_total - n_success
-    
+    n_fail = n_valid - n_success
+
+    # Plans where cuRobo found a trajectory (before constraint checks)
+    n_planning_success = sum(
+        1 for m in all_metrics
+        if m.success or "ORIENTATION_VIOLATED" in m.status
+    )
+    # Plans that also satisfy orientation constraints
+    n_constraint_fail = sum(
+        1 for m in all_metrics
+        if not m.success and "ORIENTATION_VIOLATED" in m.status
+    )
+
     result = {
         "total_problems": n_total,
+        "valid_problems": n_valid,
+        "skipped_invalid_start": n_skipped,
         "successes": n_success,
         "failures": n_fail,
-        "success_rate_pct": 100 * n_success / n_total if n_total > 0 else 0,
+        "success_rate_pct": 100 * n_success / n_valid if n_valid > 0 else 0,
+        "planning_successes": n_planning_success,
+        "planning_success_rate_pct": 100 * n_planning_success / n_valid if n_valid > 0 else 0,
+        "orientation_constraint_failures": n_constraint_fail,
     }
-    
+
     # Failure breakdown
     fail_statuses = [m.status for m in all_metrics if not m.success]
     status_counts = {}
@@ -143,7 +164,8 @@ def aggregate_metrics(all_metrics: List[PlanningMetrics]) -> Dict:
     # Aggregate numeric metrics for successful plans only
     if n_success == 0:
         return result
-    
+
+    # Use fully-successful plans for quality metrics
     success_metrics = [m for m in all_metrics if m.success]
     
     numeric_fields = [
@@ -184,9 +206,23 @@ def print_summary(agg: Dict, phase_name: str = ""):
     print(f"\n{'='*60}")
     print(f"  {phase_name} RESULTS SUMMARY")
     print(f"{'='*60}")
+    n_valid = agg.get('valid_problems', agg['total_problems'])
+    n_skipped = agg.get('skipped_invalid_start', 0)
+
     print(f"  Problems:     {agg['total_problems']}")
+    if n_skipped > 0:
+        print(f"  Skipped:      {n_skipped} (start config in collision with obstacles)")
+        print(f"  Valid:        {n_valid}")
     print(f"  Success rate: {agg['success_rate_pct']:.1f}% "
-          f"({agg['successes']}/{agg['total_problems']})")
+          f"({agg['successes']}/{n_valid})")
+
+    # Show planning vs constraint-satisfying success when they differ
+    if agg.get("orientation_constraint_failures", 0) > 0:
+        print(f"  Planning success (before constraint check): "
+              f"{agg['planning_success_rate_pct']:.1f}% "
+              f"({agg['planning_successes']}/{n_valid})")
+        print(f"  Rejected by orientation constraint: "
+              f"{agg['orientation_constraint_failures']}")
     
     if agg.get("failure_breakdown"):
         print(f"  Failure types:")

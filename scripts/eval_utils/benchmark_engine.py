@@ -146,6 +146,7 @@ class BenchmarkRunner:
         """
         n = len(problems)
         all_metrics = []
+        n_skipped = 0
         cfg = self.cfg
 
         print(f"\n[{cfg.phase_name}] Running {n} problems...")
@@ -155,13 +156,31 @@ class BenchmarkRunner:
 
         for i, problem in enumerate(problems):
             metrics = self._run_single(problem)
+
+            # Track start-state collisions separately — these indicate
+            # the problem set is invalid for this obstacle layout, not
+            # a planner failure.
+            if "INVALID_START_STATE" in metrics.status:
+                metrics.skipped_invalid_start = True
+                n_skipped += 1
             all_metrics.append(metrics)
 
             # Progress update every 100 problems
             if (i + 1) % 100 == 0 or i == n - 1:
                 n_ok = sum(1 for m in all_metrics if m.success)
-                print(f"  [{i+1}/{n}] success={n_ok}/{i+1} "
-                      f"({100*n_ok/(i+1):.1f}%)")
+                n_valid = (i + 1) - n_skipped
+                if n_valid > 0:
+                    print(f"  [{i+1}/{n}] success={n_ok}/{n_valid} valid "
+                          f"({100*n_ok/n_valid:.1f}%) "
+                          f"[{n_skipped} skipped: start in collision]")
+                else:
+                    print(f"  [{i+1}/{n}] {n_skipped} skipped (start in collision)")
+
+        if n_skipped > 0:
+            print(f"\n  WARNING: {n_skipped}/{n} problems had start configs "
+                  f"colliding with obstacles.")
+            print(f"  These are excluded from success rate. "
+                  f"Re-generate problems with obstacle-aware workspace scan.")
 
         return all_metrics
 
@@ -259,6 +278,12 @@ class BenchmarkRunner:
                 metrics.constraint_satisfied = (
                     orient_info["max_deviation_deg"] <= cfg.max_orientation_deviation_deg
                 )
+
+                # Hard gate: a plan that violates the orientation constraint
+                # is NOT a success for constrained planning.
+                if not metrics.constraint_satisfied:
+                    metrics.success = False
+                    metrics.status += " (ORIENTATION_VIOLATED)"
 
             # ---- COLLISION VALIDATION ----
             # Check the planned trajectory for collisions using cuRobo's checker

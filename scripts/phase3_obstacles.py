@@ -201,11 +201,21 @@ def main():
 
     # Run all layouts
     all_results = {}
+    skipped_layouts = []
     for layout_name, layout_cfg in layouts_to_run.items():
         world_config = build_world_config(layout_cfg)
 
         # Generate problems valid for this obstacle layout
-        problems = generate_problems_for_layout(layout_name, world_config, n_problems)
+        try:
+            problems = generate_problems_for_layout(layout_name, world_config, n_problems)
+        except RuntimeError as e:
+            print(f"\n  SKIPPING layout '{layout_name}': {e}")
+            print(f"  The obstacle layout is too restrictive for the current "
+                  f"workspace bounds.")
+            print(f"  Consider widening workspace bounds or simplifying "
+                  f"the '{layout_name}' obstacles.\n")
+            skipped_layouts.append(layout_name)
+            continue
 
         # Run unconstrained (unless skipped)
         if not args.skip_unconstrained:
@@ -239,6 +249,13 @@ def main():
               f"{pt:<14.1f} {orient:<14.2f}")
 
     print("="*70)
+
+    if skipped_layouts:
+        print(f"\n  SKIPPED LAYOUTS ({len(skipped_layouts)}): "
+              f"{', '.join(skipped_layouts)}")
+        print(f"  These layouts had too few reachable poses to generate "
+              f"{n_problems} problems.")
+
     print("\n  All Phase 3 results saved to results/ directory.")
     print("  Next: run scripts/analyze_results.py for cross-phase analysis.\n")
 

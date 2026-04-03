@@ -39,27 +39,28 @@ def print_cross_phase_report(summaries: Dict[str, dict]):
         return
 
     # Header
-    print(f"\n  {'Phase':<35} {'Success%':<10} {'PlanTime':<12} "
-          f"{'PathLen':<10} {'MaxJerk':<10} {'OrientDev':<12}")
-    print(f"  {'':35} {'':10} {'median(ms)':<12} "
-          f"{'mean(rad)':<10} {'p98(r/s³)':<10} {'mean(°)':<12}")
-    print("-"*80)
+    print(f"\n  {'Phase':<35} {'Success%':<10} {'Valid':<8} {'PlanTime':<12} "
+          f"{'PathLen':<10} {'OrientDev':<12}")
+    print(f"  {'':35} {'':10} {'':8} {'median(ms)':<12} "
+          f"{'mean(rad)':<10} {'mean(°)':<12}")
+    print("-"*88)
 
     for name, s in summaries.items():
         sr = f"{s['success_rate_pct']:.1f}%"
+        n_valid = s.get('valid_problems', s['total_problems'])
+        valid_str = f"{n_valid}/{s['total_problems']}"
 
         if s["successes"] == 0:
-            print(f"  {name:<35} {sr:<10} {'—':<12} {'—':<10} {'—':<10} {'—':<12}")
+            print(f"  {name:<35} {sr:<10} {valid_str:<8} {'—':<12} {'—':<10} {'—':<12}")
             continue
 
         pt = f"{s['plan_time_ms']['median']:.1f}" if 'plan_time_ms' in s else "—"
         pl = f"{s['path_length_rad']['mean']:.2f}" if 'path_length_rad' in s else "—"
-        jk = f"{s['max_jerk']['p98']:.1f}" if 'max_jerk' in s else "—"
         od = f"{s['max_orientation_deviation_deg']['mean']:.2f}" if 'max_orientation_deviation_deg' in s else "—"
 
-        print(f"  {name:<35} {sr:<10} {pt:<12} {pl:<10} {jk:<10} {od:<12}")
+        print(f"  {name:<35} {sr:<10} {valid_str:<8} {pt:<12} {pl:<10} {od:<12}")
 
-    print("-"*80)
+    print("-"*88)
 
     # Failure analysis
     print(f"\n  FAILURE BREAKDOWN:")
@@ -83,16 +84,33 @@ def print_cross_phase_report(summaries: Dict[str, dict]):
             print(f"  {name}: No collisions detected in successful plans")
 
     # Constraint satisfaction
-    print(f"\n  ORIENTATION CONSTRAINT SATISFACTION:")
+    print(f"\n  ORIENTATION CONSTRAINT ENFORCEMENT:")
     for name, s in summaries.items():
-        cvr = s.get("constraint_violation_rate_pct")
-        if cvr is not None:
-            if cvr > 0:
-                od = s.get("max_orientation_deviation_deg", {})
-                print(f"  {name}: {cvr:.1f}% violated constraint "
-                      f"(max deviation p98={od.get('p98', '?'):.2f}°)")
-            else:
-                print(f"  {name}: All trajectories within constraint")
+        n_orient_fail = s.get("orientation_constraint_failures", 0)
+        if n_orient_fail > 0:
+            planning_sr = s.get("planning_success_rate_pct", s["success_rate_pct"])
+            final_sr = s["success_rate_pct"]
+            od = s.get("max_orientation_deviation_deg", {})
+            print(f"  {name}:")
+            print(f"    Planning success: {planning_sr:.1f}% -> "
+                  f"After constraint enforcement: {final_sr:.1f}%")
+            print(f"    {n_orient_fail} plans rejected (violated {od.get('p98', '?'):.1f}° p98 "
+                  f"vs 5° limit)")
+        elif "constrained" in name:
+            print(f"  {name}: All planned trajectories satisfy constraint")
+
+    # Invalid start state warnings
+    has_start_issues = False
+    for name, s in summaries.items():
+        n_skipped = s.get("skipped_invalid_start", 0)
+        if n_skipped > 0:
+            if not has_start_issues:
+                print(f"\n  INVALID START STATE WARNINGS:")
+                has_start_issues = True
+            print(f"  {name}: {n_skipped} problems had start configs "
+                  f"colliding with obstacles (excluded from success rate)")
+    if has_start_issues:
+        print(f"  → Re-generate problem sets with obstacle-aware workspace scan")
 
     # Key insights
     print(f"\n  KEY INSIGHTS:")
