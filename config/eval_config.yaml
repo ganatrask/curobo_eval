@@ -1,0 +1,299 @@
+# =============================================================================
+# cuRobo Evaluation Configuration
+# =============================================================================
+# Edit this file to match YOUR robot and task setup.
+# All scripts read from this config.
+
+# ---------------------------------------------------------------------------
+# Robot Configuration
+# ---------------------------------------------------------------------------
+robot:
+  # Path to your cuRobo robot YAML (contains URDF path, spheres, joint config)
+  # Can be a filename in cuRobo's robot_configs dir (e.g. "ur5e.yml")
+  # or an absolute path to your custom file (e.g. "/home/user/my_robot.yml")
+  # Relative to project root (resolved by scripts at load time) or absolute path
+  config_file: "robots/curobo_configs_1/wxai_spatula_curobo.yml"
+
+  # Joint names in YOUR robot's URDF (order must match the URDF)
+  # These are used to create JointState objects
+  joint_names:
+    - "joint_0"
+    - "joint_1"
+    - "joint_2"
+    - "joint_3"
+    - "joint_4"
+    - "joint_5"
+
+  # A known safe "home" configuration (radians)
+  # The robot starts here and returns here between tests
+  retract_config: [0.0, 0.5, 0.5, 0.0, 0.0, 0.0]
+
+  # End-effector link name (must match your robot YAML ee_link)
+  ee_link: "spatula_tip"
+
+  # USD path for Isaac Sim visualization (optional, for Phase 0)
+  # Leave empty to use cuRobo's built-in robot loading
+  usd_path: "robots/assets/wxai/wxai_follower_spatula.usd"
+
+# ---------------------------------------------------------------------------
+# Spatula / Tool Configuration
+# ---------------------------------------------------------------------------
+# If your spatula is already in the URDF and robot YAML as an extra_link,
+# set has_spatula: true. The orientation constraint will keep ee_link flat.
+tool:
+  has_spatula: true
+
+  # The "flat" orientation of the spatula in world frame
+  # This is the quaternion [qw, qx, qy, qz] where the spatula is level
+  # For most setups: pointing down = [0, 1, 0, 0] or [0, 0, 1, 0]
+  # You need to figure this out for YOUR gripper frame
+  flat_orientation_wxyz: [1.0, 0.0, 0.0, 0.0]
+
+  # Maximum acceptable orientation deviation (degrees)
+  # If spatula tilts more than this, the trajectory fails your quality check
+  max_orientation_deviation_deg: 5.0
+
+# ---------------------------------------------------------------------------
+# Task Workspace Definition
+# ---------------------------------------------------------------------------
+# This defines WHERE your robot operates — the 3D bounding box for sampling
+# goal poses. Set this to match your real-world task area.
+workspace:
+  # Bounding box for goal positions [min, max] in meters
+  # Relative to robot base frame
+  x_range: [0.1, 0.45]   # Forward from robot base (wxai reach ~0.5m total)
+  y_range: [-0.3, 0.3]   # Left-right
+  z_range: [0.02, 0.35]  # Height (above table surface)
+
+  # Goal orientations to test
+  # "fixed": All goals use flat_orientation_wxyz (spatula level)
+  # "random": Random orientations (for unconstrained tests)
+  # "varied": Mix of flat + small perturbations (realistic)
+  orientation_mode: "fixed"
+
+  # IK reachability scan resolution (meters)
+  # Smaller = more accurate workspace map, but slower Phase 0
+  reachability_resolution: 0.05
+
+# ---------------------------------------------------------------------------
+# Planning Parameters
+# ---------------------------------------------------------------------------
+planning:
+  # Number of test problems per phase
+  num_problems: 1000
+
+  # cuRobo MotionGen parameters
+  num_trajopt_seeds: 12       # Parallel optimization seeds
+  num_graph_seeds: 12         # Geometric planner seeds
+  interpolation_dt: 0.02      # Trajectory interpolation timestep (s)
+  max_attempts: 10            # Retries with resampled seeds
+  enable_graph: true          # Enable PRM* geometric planner
+
+  # Time-optimal trajectory scaling
+  # Lower = slower, smoother motion (good for food)
+  # Range: 0.5 (very conservative) to 1.0 (full speed)
+  time_dilation_factor: 0.7
+
+  # Collision safety margins
+  collision_activation_distance: 0.025  # meters
+  collision_sphere_buffer: 0.01         # extra padding on spheres
+
+  # Kinematic limits (override URDF if needed for food safety)
+  max_jerk: 200.0            # rad/s^3 (default 500, reduced for food)
+  max_acceleration: 8.0      # rad/s^2 (default 15, reduced for food)
+
+# ---------------------------------------------------------------------------
+# Obstacle Layouts (Phase 3)
+# ---------------------------------------------------------------------------
+# Define multiple layouts to test different difficulty levels.
+# Each layout is a named scene with cuboid and/or mesh obstacles.
+# Poses: [x, y, z, qw, qx, qy, qz], dims: [length, width, height]
+obstacle_layouts:
+
+  easy:
+    description: "Simple table + 1 side wall, mostly clear workspace"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      wall_left:
+        dims: [0.05, 0.6, 0.4]
+        pose: [-0.1, 0.5, 0.2, 1, 0, 0, 0]
+
+  medium:
+    description: "Table + overhead shelf + 2 side obstacles"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      shelf:
+        dims: [0.8, 0.6, 0.03]
+        pose: [0.45, 0.0, 0.55, 1, 0, 0, 0]
+      wall_left:
+        dims: [0.05, 0.6, 0.5]
+        pose: [-0.1, 0.45, 0.25, 1, 0, 0, 0]
+      wall_right:
+        dims: [0.05, 0.6, 0.5]
+        pose: [-0.1, -0.45, 0.25, 1, 0, 0, 0]
+
+  hard:
+    description: "Dense clutter — table + shelf + narrow passage + boxes"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      shelf:
+        dims: [0.8, 0.6, 0.03]
+        pose: [0.45, 0.0, 0.45, 1, 0, 0, 0]
+      wall_left:
+        dims: [0.05, 0.5, 0.5]
+        pose: [0.0, 0.35, 0.25, 1, 0, 0, 0]
+      wall_right:
+        dims: [0.05, 0.5, 0.5]
+        pose: [0.0, -0.35, 0.25, 1, 0, 0, 0]
+      box_center:
+        dims: [0.15, 0.15, 0.2]
+        pose: [0.4, 0.0, 0.1, 1, 0, 0, 0]
+      box_left:
+        dims: [0.1, 0.1, 0.15]
+        pose: [0.5, 0.2, 0.075, 1, 0, 0, 0]
+
+  # ---- Realistic food-transfer scenarios ----
+  # Small objects scattered IN the workspace that force path deviation
+
+  few_boxes:
+    description: "3 small boxes on the table — robot must navigate around them"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      bowl_left:
+        dims: [0.10, 0.10, 0.08]
+        pose: [0.30, 0.15, 0.04, 1, 0, 0, 0]
+      cup_center:
+        dims: [0.07, 0.07, 0.12]
+        pose: [0.35, 0.0, 0.06, 1, 0, 0, 0]
+      container_right:
+        dims: [0.12, 0.08, 0.10]
+        pose: [0.30, -0.15, 0.05, 1, 0, 0, 0]
+
+  scattered:
+    description: "6 small objects spread across workspace — moderate clutter"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      box_1:
+        dims: [0.08, 0.08, 0.10]
+        pose: [0.30, 0.10, 0.05, 1, 0, 0, 0]
+      box_2:
+        dims: [0.10, 0.06, 0.12]
+        pose: [0.35, -0.10, 0.06, 1, 0, 0, 0]
+      box_3:
+        dims: [0.07, 0.07, 0.15]
+        pose: [0.40, 0.05, 0.075, 1, 0, 0, 0]
+      box_4:
+        dims: [0.06, 0.10, 0.08]
+        pose: [0.28, -0.20, 0.04, 1, 0, 0, 0]
+      box_5:
+        dims: [0.09, 0.09, 0.10]
+        pose: [0.38, 0.20, 0.05, 1, 0, 0, 0]
+      box_6:
+        dims: [0.08, 0.08, 0.14]
+        pose: [0.32, 0.0, 0.07, 1, 0, 0, 0]
+
+  cluttered:
+    description: "10 objects densely packed — maximum obstacle avoidance challenge"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      obj_1:
+        dims: [0.08, 0.08, 0.10]
+        pose: [0.28, 0.05, 0.05, 1, 0, 0, 0]
+      obj_2:
+        dims: [0.07, 0.10, 0.12]
+        pose: [0.32, -0.08, 0.06, 1, 0, 0, 0]
+      obj_3:
+        dims: [0.10, 0.07, 0.08]
+        pose: [0.36, 0.12, 0.04, 1, 0, 0, 0]
+      obj_4:
+        dims: [0.06, 0.06, 0.15]
+        pose: [0.30, -0.18, 0.075, 1, 0, 0, 0]
+      obj_5:
+        dims: [0.09, 0.09, 0.11]
+        pose: [0.40, 0.0, 0.055, 1, 0, 0, 0]
+      obj_6:
+        dims: [0.07, 0.07, 0.09]
+        pose: [0.35, 0.20, 0.045, 1, 0, 0, 0]
+      obj_7:
+        dims: [0.08, 0.06, 0.13]
+        pose: [0.38, -0.15, 0.065, 1, 0, 0, 0]
+      obj_8:
+        dims: [0.10, 0.10, 0.07]
+        pose: [0.28, 0.22, 0.035, 1, 0, 0, 0]
+      obj_9:
+        dims: [0.06, 0.08, 0.10]
+        pose: [0.42, -0.08, 0.05, 1, 0, 0, 0]
+      obj_10:
+        dims: [0.08, 0.08, 0.16]
+        pose: [0.34, 0.08, 0.08, 1, 0, 0, 0]
+
+  # ---- Elevated obstacles that block arm motion path ----
+  # Obstacles at z=0.15–0.30 (arm height) between common start/goal positions
+  # The robot MUST dodge these — can't just go over them
+
+  elevated:
+    description: "Obstacles at arm height — forces real path deviation"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      # Tall pole in center of workspace — blocks straight-line paths
+      pole_center:
+        dims: [0.06, 0.06, 0.35]
+        pose: [0.35, 0.0, 0.175, 1, 0, 0, 0]
+      # Horizontal bar at arm height on the left side
+      bar_left:
+        dims: [0.20, 0.04, 0.04]
+        pose: [0.35, 0.15, 0.20, 1, 0, 0, 0]
+      # Floating box at mid-height on the right
+      floating_right:
+        dims: [0.10, 0.10, 0.10]
+        pose: [0.35, -0.15, 0.20, 1, 0, 0, 0]
+      # Low overhead bar — robot must duck under or go around
+      overhead_bar:
+        dims: [0.30, 0.04, 0.04]
+        pose: [0.40, 0.0, 0.30, 1, 0, 0, 0]
+
+  gauntlet:
+    description: "Narrow corridor of obstacles — robot must thread through gaps"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      # Two walls creating a narrow gap the arm must pass through
+      wall_left_low:
+        dims: [0.04, 0.25, 0.25]
+        pose: [0.35, 0.12, 0.125, 1, 0, 0, 0]
+      wall_right_low:
+        dims: [0.04, 0.25, 0.25]
+        pose: [0.35, -0.12, 0.125, 1, 0, 0, 0]
+      # Upper blocker — forces the arm to go through the gap, not over
+      ceiling:
+        dims: [0.20, 0.40, 0.04]
+        pose: [0.35, 0.0, 0.32, 1, 0, 0, 0]
+      # Obstacle behind the gap — blocks simple retreat paths
+      back_wall:
+        dims: [0.04, 0.30, 0.30]
+        pose: [0.45, 0.0, 0.15, 1, 0, 0, 0]
+
+# ---------------------------------------------------------------------------
+# Output / Logging
+# ---------------------------------------------------------------------------
+output:
+  results_dir: "results"
+  # Save full trajectory data (large files) or just metrics
+  save_trajectories: false
+  # Save per-problem details or just aggregate stats
+  save_per_problem: true

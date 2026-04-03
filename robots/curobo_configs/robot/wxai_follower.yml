@@ -1,0 +1,106 @@
+##
+## cuRobo robot configuration for Trossen wxai (follower variant)
+## Used for GPU-accelerated motion planning in the rice plating simulation.
+##
+## Joint velocity limits are read from the URDF automatically.
+## Speed is controlled via velocity_scale in MotionGenConfig.load_from_robot_config().
+## max_acceleration and max_jerk here are scalar caps across all joints.
+##
+
+robot_cfg:
+  kinematics:
+    use_usd_kinematics: False
+    urdf_path: "wxai_follower.urdf"
+    asset_root_path: ""
+    base_link: "base_link"
+    ee_link: "spatula_tip"
+
+    use_global_cumul: True
+
+    # Links with collision geometry
+    collision_link_names:
+      [
+        "base_link",
+        "link_1",
+        "link_2",
+        "link_3",
+        "link_4",
+        "link_5",
+        "link_6",
+        "carriage_left",
+        "carriage_right",
+        "gripper_left",
+        "gripper_right",
+      ]
+
+    collision_spheres: "spheres/wxai_follower.yml"
+    collision_sphere_buffer: 0.005
+    extra_collision_spheres: {}
+
+    # Self-collision pairs to ignore (from MoveIt SRDF disable_collisions)
+    self_collision_ignore:
+      {
+        "base_link": ["link_1", "link_2"],
+        "link_1": ["link_2"],
+        "link_2": ["link_3", "link_5"],
+        "link_3": ["link_4", "link_5", "link_6",
+                    "carriage_left", "carriage_right",
+                    "gripper_left", "gripper_right"],
+        "link_4": ["link_5", "link_6",
+                    "carriage_left", "carriage_right",
+                    "gripper_left", "gripper_right"],
+        "link_5": ["link_6",
+                    "carriage_left", "carriage_right",
+                    "gripper_left", "gripper_right"],
+        "link_6": ["carriage_left", "carriage_right",
+                    "gripper_left", "gripper_right"],
+        "carriage_left": ["carriage_right", "gripper_left", "gripper_right"],
+        "carriage_right": ["gripper_left", "gripper_right"],
+        "gripper_left": ["gripper_right"],
+      }
+
+    self_collision_buffer:
+      {
+        "base_link": 0.08,
+        "link_1": 0.04,
+        "link_2": 0.0,
+        "link_3": 0.0,
+        "link_4": 0.0,
+        "link_5": 0.0,
+        "link_6": 0.0,
+        "carriage_left": 0.0,
+        "carriage_right": 0.0,
+        "gripper_left": 0.01,
+        "gripper_right": 0.01,
+      }
+
+    mesh_link_names:
+      [
+        "base_link",
+        "link_1",
+        "link_2",
+        "link_3",
+        "link_4",
+        "link_5",
+        "link_6",
+        "carriage_left",
+        "carriage_right",
+        "gripper_left",
+        "gripper_right",
+      ]
+
+    # Lock gripper joints — controlled separately outside cuRobo
+    lock_joints:
+      {
+        "left_carriage_joint": 0.0,
+        "right_carriage_joint": 0.0,
+      }
+
+    cspace:
+      joint_names: [joint_0, joint_1, joint_2, joint_3, joint_4, joint_5]
+      retract_config: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+      null_space_weight: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      cspace_distance_weight: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      # ── Scalar limits (cuRobo reads per-joint velocity from URDF) ───
+      max_acceleration: 2.0
+      max_jerk: 25.0
