@@ -239,6 +239,55 @@ obstacle_layouts:
         dims: [0.08, 0.08, 0.16]
         pose: [0.34, 0.08, 0.08, 1, 0, 0, 0]
 
+  # ---- Elevated obstacles that block arm motion path ----
+  # Obstacles at z=0.15–0.30 (arm height) between common start/goal positions
+  # The robot MUST dodge these — can't just go over them
+
+  elevated:
+    description: "Obstacles at arm height — forces real path deviation"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      # Tall pole in center of workspace — blocks straight-line paths
+      pole_center:
+        dims: [0.06, 0.06, 0.35]
+        pose: [0.35, 0.0, 0.175, 1, 0, 0, 0]
+      # Horizontal bar at arm height on the left side
+      bar_left:
+        dims: [0.20, 0.04, 0.04]
+        pose: [0.35, 0.15, 0.20, 1, 0, 0, 0]
+      # Floating box at mid-height on the right
+      floating_right:
+        dims: [0.10, 0.10, 0.10]
+        pose: [0.35, -0.15, 0.20, 1, 0, 0, 0]
+      # Low overhead bar — robot must duck under or go around
+      overhead_bar:
+        dims: [0.30, 0.04, 0.04]
+        pose: [0.40, 0.0, 0.30, 1, 0, 0, 0]
+
+  gauntlet:
+    description: "Narrow corridor of obstacles — robot must thread through gaps"
+    cuboid:
+      table:
+        dims: [1.2, 0.8, 0.05]
+        pose: [0.45, 0.0, -0.06, 1, 0, 0, 0]
+      # Two walls creating a narrow gap the arm must pass through
+      wall_left_low:
+        dims: [0.04, 0.25, 0.25]
+        pose: [0.35, 0.12, 0.125, 1, 0, 0, 0]
+      wall_right_low:
+        dims: [0.04, 0.25, 0.25]
+        pose: [0.35, -0.12, 0.125, 1, 0, 0, 0]
+      # Upper blocker — forces the arm to go through the gap, not over
+      ceiling:
+        dims: [0.20, 0.40, 0.04]
+        pose: [0.35, 0.0, 0.32, 1, 0, 0, 0]
+      # Obstacle behind the gap — blocks simple retreat paths
+      back_wall:
+        dims: [0.04, 0.30, 0.30]
+        pose: [0.45, 0.0, 0.15, 1, 0, 0, 0]
+
 # ---------------------------------------------------------------------------
 # Output / Logging
 # ---------------------------------------------------------------------------

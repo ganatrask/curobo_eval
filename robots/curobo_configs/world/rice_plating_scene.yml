@@ -1,0 +1,10 @@
+##
+## Static world obstacles for rice plating simulation.
+## Bowl obstacles are added dynamically at runtime.
+##
+
+cuboid:
+  table:
+    dims: [2.0, 2.0, 0.05]
+    pose: [0.0, 0.0, -0.06, 1, 0, 0, 0]  # table top at Z=-0.035, below base_link (Z=0)
+    color: [0.5, 0.4, 0.3, 1.0]

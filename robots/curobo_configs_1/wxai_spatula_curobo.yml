@@ -34,7 +34,7 @@ robot_cfg:
     # Collision sphere approximation for each link
     # Must be absolute — cuRobo resolves relative paths against its own config dir
     collision_spheres: "/home/shyam/projects/cc/curobo_eval/robots/curobo_configs_1/wxai_spatula_spheres.yml"
-    collision_sphere_buffer: 0.005
+    collision_sphere_buffer: 0.015  # 15mm safety margin to prevent visual mesh clipping obstacles
 
     # Use cumulative transform for faster kinematics
     use_global_cumul: True
